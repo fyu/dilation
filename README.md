@@ -48,10 +48,10 @@ conda install numba numpy opencv
     ```
     python predict.py images/dog.jpg --gpu 0
     ```
-    The results is saved as images/dog_front.png.
+    The result is saved as images/dog_front.png.
 * Run front end mode together with context module on GPU 0
     
     ```
     python predict.py images/dog.jpg --context 1 --gpu 0
     ```
-    The results is saved as images/dog_context.png.
+    The result is saved as images/dog_context.png.
