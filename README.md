@@ -33,21 +33,25 @@ conda install numba numpy opencv
 ## Running Demo
 
 * Clone the code from Github	
+   
     ```
     git clone git@github.com:fyu/dilation.git
     cd dilation
     ```
 * Download pretrained network
-	```
+
+    ```
     sh pretrained/download.sh
     ```
 * Run front end model on GPU 0
-	```
+    
+    ```
     python predict.py images/dog.jpg --gpu 0
     ```
     The results is saved as images/dog_front.png.
 * Run front end mode together with context module on GPU 0
-	```
+    
+    ```
     python predict.py images/dog.jpg --context 1 --gpu 0
     ```
     The results is saved as images/dog_context.png.
