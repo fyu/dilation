@@ -4,6 +4,8 @@
 
 Properties of dilated convolution are discussed in the [arXiv report](http://arxiv.org/abs/1511.07122) under ICLR 2016 review. It can be used for semantic image segmentation and learning context information. This repo releases the network definition discussed in the report and the trained models.
 
+### Citing
+
 If you find the code or model useful in your research, please consider citing:
 ```
 @article{yu2015multi,
@@ -13,6 +15,10 @@ If you find the code or model useful in your research, please consider citing:
   year    = {2015}
 }
 ```
+### License
+
+The code and models are released under the MIT License (refer to the LICENSE file for details).
+
 
 ## Installation
 ### Caffe
@@ -33,25 +39,21 @@ conda install numba numpy opencv
 ## Running Demo
 
 * Clone the code from Github	
-   
     ```
     git clone git@github.com:fyu/dilation.git
     cd dilation
     ```
 * Download pretrained network
-
-    ```
+	```
     sh pretrained/download.sh
     ```
 * Run front end model on GPU 0
-    
-    ```
+	```
     python predict.py images/dog.jpg --gpu 0
     ```
-    The result is saved as images/dog_front.png.
+    The results is saved as images/dog_front.png.
 * Run front end mode together with context module on GPU 0
-    
-    ```
+	```
     python predict.py images/dog.jpg --context 1 --gpu 0
     ```
-    The result is saved as images/dog_context.png.
+    The results is saved as images/dog_context.png.
