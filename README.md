@@ -8,11 +8,11 @@ Properties of dilated convolution are discussed in the [arXiv report](http://arx
 
 If you find the code or model useful in your research, please consider citing:
 ```
-@article{yu2015multi,
-  title   = {Multi-Scale Context Aggregation by Dilated Convolutions},
-  author  = {Yu, Fisher and Koltun, Vladlen},
-  journal = {arXiv preprint arXiv:1511.07122},
-  year    = {2015}
+@inproceedings{YuKoltun2016,
+	author    = {Fisher Yu and Vladlen Koltun},
+	title     = {Multi-Scale Context Aggregation by Dilated Convolutions},
+	booktitle = {ICLR},
+	year      = {2016},
 }
 ```
 ### License
