@@ -2,17 +2,17 @@
 
 ## Introduction
 
-Properties of dilated convolution are discussed in the [arXiv report](http://arxiv.org/abs/1511.07122) under ICLR 2016 review. It can be used for semantic image segmentation and learning context information. This repo releases the network definition discussed in the report and the trained models.
+Properties of dilated convolution are discussed in the [arXiv report](http://arxiv.org/abs/1511.07122) accepted as ICLR 2016 conference paper. It can be used for semantic image segmentation and learning context information. This repo releases the network definition discussed in the report and the trained models.
 
 ### Citing
 
 If you find the code or model useful in your research, please consider citing:
 ```
-@article{yu2015multi,
-  title   = {Multi-Scale Context Aggregation by Dilated Convolutions},
-  author  = {Yu, Fisher and Koltun, Vladlen},
-  journal = {arXiv preprint arXiv:1511.07122},
-  year    = {2015}
+@inproceedings{YuKoltun2016,
+	author    = {Fisher Yu and Vladlen Koltun},
+	title     = {Multi-Scale Context Aggregation by Dilated Convolutions},
+	booktitle = {ICLR},
+	year      = {2016},
 }
 ```
 ### License
