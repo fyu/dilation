@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Properties of dilated convolution are discussed in the [arXiv report](http://arxiv.org/abs/1511.07122) accepted as ICLR 2016 conference paper. It can be used for semantic image segmentation and learning context information. This repo releases the network definition discussed in the report and the trained models.
+Properties of dilated convolution are discussed in the [arXiv report](http://arxiv.org/abs/1511.07122) accepted as ICLR 2016 conference paper. It can be used for semantic image segmentation and learning context information. This repo releases the network definition discussed in the report and the trained models. You can use this code together with vanilla Caffe to segment images with pretrained models. However, if you want to train the network by yourself, please check out [this fork of Caffe](https://github.com/fyu/caffe-dilation).
 
 ### Citing
 
