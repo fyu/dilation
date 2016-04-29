@@ -38,6 +38,12 @@ conda install numba numpy opencv
 
 ## Running Demo
 
+predict.py is the main script to test the pretrained model on images. The basic usage is
+    
+    python predict.py <dataset name> <image path>
+
+Given the dataset name, the script will find the pretrained model and network definition. We currently support models trained from 4 datasets: pascal_voc, camvid, kitti, cityscapes. The steps of using the code is listed below:
+
 * Clone the code from Github	
     
     ```
@@ -47,17 +53,10 @@ conda install numba numpy opencv
 * Download pretrained network
 	
     ```
-    sh pretrained/download.sh
+    sh pretrained/download_pascal_voc.sh
     ```
-* Run front end model on GPU 0
+* Run pascal voc model on GPU 0
 	
     ```
-    python predict.py images/dog.jpg --gpu 0
+    python predict.py pascal_voc images/dog.jpg --gpu 0
     ```
-    The results is saved as images/dog_front.png.
-* Run front end mode together with context module on GPU 0
-	
-    ```
-    python predict.py images/dog.jpg --context 1 --gpu 0
-    ```
-    The results is saved as images/dog_context.png.
