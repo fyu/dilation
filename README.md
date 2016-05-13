@@ -60,3 +60,9 @@ Given the dataset name, the script will find the pre-trained model and network d
     ```
     python predict.py pascal_voc images/dog.jpg --gpu 0
     ```
+
+## Implementation of Dilated Convolution
+
+Besides Caffe support, dilated convolution is also implemented in other deep learning packages. For example,
+* Torch: [SpatialDilatedConvolution](https://github.com/torch/nn/blob/master/doc/convolution.md#nn.SpatialDilatedConvolution)
+* Lasagne: [DilatedConv2DLayer](http://lasagne.readthedocs.io/en/latest/modules/layers/conv.html?highlight=dilated#lasagne.layers.DilatedConv2DLayer)
