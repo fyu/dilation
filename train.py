@@ -80,11 +80,11 @@ def make_image_label_data(image_list_path, label_list_path, batch_size,
     return layer_param
 
 
-def make_softmax_loss():
+def make_softmax_loss(final):
     layer_param = caffe_pb2.LayerParameter()
     layer_param.name = 'loss'
     layer_param.type = 'SoftmaxWithLoss'
-    layer_param.bottom.extend(['final', 'label'])
+    layer_param.bottom.extend([final, 'label'])
     layer_param.top.append('loss')
     layer_param.loss_param.ignore_label = 255
     layer_param.loss_param.normalization = caffe_pb2.LossParameter.VALID
@@ -92,11 +92,11 @@ def make_softmax_loss():
     return layer_param
 
 
-def make_accuracy():
+def make_accuracy(final):
     layer_param = caffe_pb2.LayerParameter()
     layer_param.name = 'accuracy'
     layer_param.type = 'Accuracy'
-    layer_param.bottom.extend(['final', 'label'])
+    layer_param.bottom.extend([final, 'label'])
     layer_param.top.append('accuracy')
     layer_param.accuracy_param.ignore_label = 255
 
@@ -109,24 +109,27 @@ def make_nets(options):
     train_net = caffe_pb2.NetParameter()
     templ_path = join(template_dir, options.model + '_vgg.txt')
     read_text_proto(templ_path, train_net)
+    train_net.layer[-1].convolution_param.num_output = options.classes
     if options.test_net is None:
         test_net = None
     else:
         test_net = caffe_pb2.NetParameter()
         test_net.CopyFrom(train_net)
+    final_name = train_net.layer[-1].top[0]
     train_net.layer[0].CopyFrom(
         make_image_label_data(
             options.train_image, options.train_label,
             options.train_batch,
             True, options.crop_size, options.mean))
-    train_net.layer.add().CopyFrom(make_softmax_loss())
+    train_net.layer.add().CopyFrom(make_softmax_loss(final_name))
 
     if test_net is not None:
         test_net.layer[0].CopyFrom(
             make_image_label_data(
                 options.test_image, options.test_label, options.test_batch,
                 False, options.crop_size, options.mean))
-        test_net.layer.extend([make_softmax_loss(), make_accuracy()])
+        test_net.layer.extend([make_softmax_loss(final_name),
+                               make_accuracy(final_name)])
 
     return train_net, test_net
 
@@ -197,6 +200,8 @@ def main():
     parser.add_argument('--crop_size', type=int, default=500)
     parser.add_argument('--lr', type=float, default=0.00001,
                         help='Solver earning rate')
+    parser.add_argument('--classes', type=int, required=True,
+                        help='Number of categories in the data')
 
     options = parser.parse_args()
     options = process_options(options)

@@ -22,7 +22,7 @@ sh ${DILATION}/pretrained/download_vgg_conv.sh
 
 The script document:
 
-```bash
+```
 usage: train.py [-h] [--caffe CAFFE] [--weights WEIGHTS]
                 [--mean [MEAN [MEAN ...]]] [--work_dir WORK_DIR] --train_image
                 TRAIN_IMAGE --train_label TRAIN_LABEL
@@ -59,6 +59,7 @@ optional arguments:
                         Testing batch size. If it is 0, no test phase.
   --crop_size CROP_SIZE
   --lr LR               Solver earning rate
+  --classes CLASSES     Number of categories in the data
 ```
 
 Please note that training/testing image/label lists are text files, in which each line specify a file path to the input or label image for training. The image and label lists for training or testing should have the same number of lines. The labels and images are corresponded by line number. The testing data is for the test phase of Caffe. Normally, it refers to the validation set in a dataset.
@@ -76,5 +77,6 @@ python ${DILATION}/train.py frontend \
 --test_batch 2 \
 --caffe ${CAFFE_DILATION_BUILD}/tools/caffe \
 --weights ${DILATION}/pretrained/vgg_conv.caffemodel \
---crop_size 500
+--crop_size 500 \
+--classes 21
 ```
