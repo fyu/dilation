@@ -4,10 +4,11 @@
 from __future__ import print_function, division
 import argparse
 from caffe.proto import caffe_pb2
-from google.protobuf import text_format
 import os
 from os.path import dirname, exists, join
 import subprocess
+
+import network
 
 
 __author__ = 'Fisher Yu'
@@ -43,72 +44,11 @@ def make_solver(options):
     return solver
 
 
-def read_text_proto(file_path, parser_object):
-    fp = open(file_path, "r")
-    if not fp:
-        raise IOError("Can not find {}".format(file_path))
-    text_format.Merge(str(fp.read()), parser_object)
-    fp.close()
-
-
-def make_image_label_data(image_list_path, label_list_path, batch_size,
-                          mirror, crop_size, mean_pixel):
-    layer_param = caffe_pb2.LayerParameter()
-    layer_param.name = 'data'
-    layer_param.type = 'ImageLabelData'
-    layer_param.top.extend(['data', 'label'])
-
-    transform_param = layer_param.transform_param
-    transform_param.mirror = mirror
-    transform_param.crop_size = crop_size
-    transform_param.mean_value.extend(mean_pixel)
-
-    data_param = layer_param.image_label_data_param
-    data_param.batch_size = batch_size
-    data_param.shuffle = True
-    data_param.rand_scale = False
-    data_param.padding = caffe_pb2.ImageLabelDataParameter.REFLECT
-    data_param.image_list_path = image_list_path
-    data_param.label_list_path = label_list_path
-
-    label_dim = (crop_size - 372) // 8
-    label_slice = data_param.label_slice
-    label_slice.offset.extend([186, 186])
-    label_slice.stride.extend([8, 8])
-    label_slice.dim.extend([label_dim, label_dim])
-
-    return layer_param
-
-
-def make_softmax_loss(final):
-    layer_param = caffe_pb2.LayerParameter()
-    layer_param.name = 'loss'
-    layer_param.type = 'SoftmaxWithLoss'
-    layer_param.bottom.extend([final, 'label'])
-    layer_param.top.append('loss')
-    layer_param.loss_param.ignore_label = 255
-    layer_param.loss_param.normalization = caffe_pb2.LossParameter.VALID
-
-    return layer_param
-
-
-def make_accuracy(final):
-    layer_param = caffe_pb2.LayerParameter()
-    layer_param.name = 'accuracy'
-    layer_param.type = 'Accuracy'
-    layer_param.bottom.extend([final, 'label'])
-    layer_param.top.append('accuracy')
-    layer_param.accuracy_param.ignore_label = 255
-
-    return layer_param
-
-
 def make_nets(options):
     script_dir = dirname(__file__)
     template_dir = join(script_dir, 'templates')
-    train_net = caffe_pb2.NetParameter()
-    templ_path = join(template_dir, options.model + '_vgg.txt')
-    read_text_proto(templ_path, train_net)
+    templ_path = join(template_dir, options.model + '.txt')
+    train_net = network.read_net(templ_path)
     train_net.layer[-1].convolution_param.num_output = options.classes
     if options.test_net is None:
         test_net = None
@@ -117,19 +57,19 @@ def make_nets(options):
         test_net.CopyFrom(train_net)
     final_name = train_net.layer[-1].top[0]
     train_net.layer[0].CopyFrom(
-        make_image_label_data(
+        network.make_image_label_data(
             options.train_image, options.train_label,
             options.train_batch,
             True, options.crop_size, options.mean))
-    train_net.layer.add().CopyFrom(make_softmax_loss(final_name))
+    train_net.layer.add().CopyFrom(network.make_softmax_loss(final_name))
 
     if test_net is not None:
         test_net.layer[0].CopyFrom(
-            make_image_label_data(
+            network.make_image_label_data(
                 options.test_image, options.test_label, options.test_batch,
                 False, options.crop_size, options.mean))
-        test_net.layer.extend([make_softmax_loss(final_name),
-                               make_accuracy(final_name)])
+        test_net.layer.extend([network.make_softmax_loss(final_name),
+                               network.make_accuracy(final_name)])
 
     return train_net, test_net
 
@@ -138,6 +78,12 @@ def process_options(options):
     assert (options.crop_size - 372) % 8 == 0, \
         "The crop size must be a multiple of 8 after removing the margin"
     assert len(options.mean) == 3
+
+    assert options.model == 'frontend', \
+        'Only front end training is supported now'
+
+    if options.model == 'frontend':
+        options.model += '_vgg'
 
     work_dir = options.work_dir
     model = options.model
@@ -154,9 +100,6 @@ def process_options(options):
     if not exists(snapshot_dir):
         os.makedirs(snapshot_dir)
     options.snapshot_prefix = join(snapshot_dir, model)
-
-    assert options.model == 'frontend', \
-        'Only front end training is supported now'
 
     return options
 
@@ -203,8 +146,7 @@ def main():
     parser.add_argument('--classes', type=int, required=True,
                         help='Number of categories in the data')
 
-    options = parser.parse_args()
-    options = process_options(options)
+    options = process_options(parser.parse_args())
 
     train_net, test_net = make_nets(options)
     solver = make_solver(options)
