@@ -107,10 +107,13 @@ def make_nets(options):
     script_dir = dirname(__file__)
     template_dir = join(script_dir, 'templates')
     train_net = caffe_pb2.NetParameter()
-    test_net = caffe_pb2.NetParameter()
     templ_path = join(template_dir, options.model + '_vgg.txt')
     read_text_proto(templ_path, train_net)
-    test_net.CopyFrom(train_net)
+    if options.test_net is None:
+        test_net = None
+    else:
+        test_net = caffe_pb2.NetParameter()
+        test_net.CopyFrom(train_net)
     train_net.layer[0].CopyFrom(
         make_image_label_data(
             options.train_image, options.train_label,
@@ -118,11 +121,12 @@ def make_nets(options):
             True, options.crop_size, options.mean))
     train_net.layer.add().CopyFrom(make_softmax_loss())
 
-    test_net.layer[0].CopyFrom(
-        make_image_label_data(
-            options.test_image, options.test_label, options.test_batch,
-            False, options.crop_size, options.mean))
-    test_net.layer.extend([make_softmax_loss(), make_accuracy()])
+    if test_net is not None:
+        test_net.layer[0].CopyFrom(
+            make_image_label_data(
+                options.test_image, options.test_label, options.test_batch,
+                False, options.crop_size, options.mean))
+        test_net.layer.extend([make_softmax_loss(), make_accuracy()])
 
     return train_net, test_net
 
@@ -138,7 +142,10 @@ def process_options(options):
         print('Creating working directory', work_dir)
         os.makedirs(work_dir)
     options.train_net = join(work_dir, model + '_train_net.txt')
-    options.test_net = join(work_dir, model + '_test_net.txt')
+    if options.test_batch > 0:
+        options.test_net = join(work_dir, model + '_test_net.txt')
+    else:
+        options.test_net = None
     options.solver_path = join(work_dir, model + '_solver.txt')
     snapshot_dir = join(work_dir, 'snapshots')
     if not exists(snapshot_dir):
@@ -164,17 +171,20 @@ def main():
                         choices=['frontend', 'context', 'joint'])
     parser.add_argument('--caffe', default='caffe',
                         help='Path to the caffe binary compiled from '
-                             'https://github.com/fyu/caffe-dilation')
+                             'https://github.com/fyu/caffe-dilation.')
     parser.add_argument('--weights', default=None,
-                        help='Path to the weights to initialize the model')
+                        help='Path to the weights to initialize the model.')
     parser.add_argument('--mean', nargs='*', default=[102.93, 111.36, 116.52],
                         help='Mean pixel value (BGR) for the dataset.\n'
-                             'Default is the mean pixel of PASCAL dataset')
+                             'Default is the mean pixel of PASCAL dataset.')
     parser.add_argument('--work_dir', default='training/',
-                        help='working dir for training.')
-    parser.add_argument('--train_image', default='',
+                        help='Working dir for training.\nAll the generated '
+                             'network and solver configurations will be written '
+                             'to this directory, in addition to training '
+                             'snapshots.')
+    parser.add_argument('--train_image', default='', required=True,
                         help='Path to the training image list')
-    parser.add_argument('--train_label', default='',
+    parser.add_argument('--train_label', default='', required=True,
                         help='Path to the training label list')
     parser.add_argument('--test_image', default='',
                         help='Path to the testing image list')
@@ -186,7 +196,7 @@ def main():
                         help='Testing batch size. If it is 0, no test phase.')
     parser.add_argument('--crop_size', type=int, default=500)
     parser.add_argument('--lr', type=float, default=0.00001,
-                        help='Learning rate')
+                        help='Solver earning rate')
 
     options = parser.parse_args()
     options = process_options(options)
@@ -196,9 +206,10 @@ def main():
     print('Writing', options.train_net)
     with open(options.train_net, 'w') as fp:
         fp.write(str(train_net))
-    print('Writing', options.test_net)
-    with open(options.test_net, 'w') as fp:
-        fp.write(str(test_net))
+    if test_net is not None:
+        print('Writing', options.test_net)
+        with open(options.test_net, 'w') as fp:
+            fp.write(str(test_net))
     print('Writing', options.solver_path)
     with open(options.solver_path, 'w') as fp:
         fp.write(str(solver))
