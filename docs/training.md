@@ -14,6 +14,12 @@ Assume ${DILATION} is the directory of [fyu/dilation](https://github.com/fyu/dil
 
 The code used for training is ${DILATION}/train.py. It takes some parameters for the data layers and tries to fill in the other automatically.
 
+Before training the front end, please download the weights of VGG network trained on ImageNet
+
+```bash
+sh ${DILATION}/pretrained/download_vgg_conv.sh
+```
+
 The script document:
 
 ```bash
