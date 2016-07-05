@@ -1,6 +1,6 @@
 # Training Dilation Network
 
-The training code for context module and joint training is still in development
+The training code for context module and joint training is still in development. Please note that the code for training is still in development, so the usage may change in the next commit.
 
 
 ## Preparation
