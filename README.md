@@ -60,6 +60,10 @@ Given the dataset name, the script will find the pre-trained model and network d
     ```
     python predict.py pascal_voc images/dog.jpg --gpu 0
     ```
+    
+## Training
+
+If you want to train our network on a new dataset, please refer to the [document for training](docs/training.md).
 
 ## Implementation of Dilated Convolution
 
