@@ -3,6 +3,7 @@
 
 from __future__ import print_function, division
 import argparse
+import caffe
 from caffe.proto import caffe_pb2
 import os
 from os.path import dirname, exists, join
@@ -44,33 +45,29 @@ def make_solver(options):
     return solver
 
 
+def make_net(options, is_training):
+    net = caffe.NetSpec()
+    net.data, net.label = network.make_image_label_data(
+        options.train_image, options.train_label, options.train_batch,
+        is_training, options.crop_size, options.mean)
+    last = network.build_frontend_vgg(
+        net, net.data, options.classes)[0]
+    if options.up:
+        net.upsample = network.make_upsample(last, options.classes)
+        last = net.upsample
+    net.loss = network.make_softmax_loss(last, net.label)
+    if not is_training:
+        net.accuracy = network.make_accuracy(last, net.label)
+    net = net.to_proto()
+    return net
+
+
 def make_nets(options):
-    script_dir = dirname(__file__)
-    template_dir = join(script_dir, 'templates')
-    templ_path = join(template_dir, options.model + '.txt')
-    train_net = network.read_net(templ_path)
-    train_net.layer[-1].convolution_param.num_output = options.classes
+    train_net = make_net(options, True)
     if options.test_net is None:
         test_net = None
     else:
-        test_net = caffe_pb2.NetParameter()
-        test_net.CopyFrom(train_net)
-    final_name = train_net.layer[-1].top[0]
-    train_net.layer[0].CopyFrom(
-        network.make_image_label_data(
-            options.train_image, options.train_label,
-            options.train_batch,
-            True, options.crop_size, options.mean))
-    train_net.layer.add().CopyFrom(network.make_softmax_loss(final_name))
-
-    if test_net is not None:
-        test_net.layer[0].CopyFrom(
-            network.make_image_label_data(
-                options.test_image, options.test_label, options.test_batch,
-                False, options.crop_size, options.mean))
-        test_net.layer.extend([network.make_softmax_loss(final_name),
-                               network.make_accuracy(final_name)])
-
+        test_net = make_net(options, False)
     return train_net, test_net
 
 
@@ -81,6 +78,11 @@ def process_options(options):
 
     assert options.model == 'frontend', \
         'Only front end training is supported now'
+
+    assert exists(options.train_image), options.train_image + 'does not exist'
+    assert exists(options.train_label), options.train_label + 'does not exist'
+    assert exists(options.test_image), options.test_image + 'does not exist'
+    assert exists(options.test_label), options.test_label + 'does not exist'
 
     if options.model == 'frontend':
         options.model += '_vgg'
@@ -105,7 +107,8 @@ def process_options(options):
 
 
 def train(options):
-    cmd = [options.caffe, 'train', '-solver', options.solver_path]
+    cmd = [options.caffe, 'train', '-solver', options.solver_path,
+           '-gpu', options.gpu]
     if options.weights is not None:
         cmd.extend(['-weights', options.weights])
     subprocess.call(cmd)
@@ -145,6 +148,11 @@ def main():
                         help='Solver earning rate')
     parser.add_argument('--classes', type=int, required=True,
                         help='Number of categories in the data')
+    parser.add_argument('--gpu', type=str, default='0',
+                        help='GPU index for training')
+    parser.add_argument('--up', action='store_true',
+                        help='If true, upsampling the final feature map '
+                             'before calculating the loss or accuracy')
 
     options = process_options(parser.parse_args())
 

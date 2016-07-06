@@ -11,28 +11,12 @@ import numpy as np
 from os.path import dirname, exists, join, splitext
 import sys
 
+import util
+
 __author__ = 'Fisher Yu'
 __copyright__ = 'Copyright (c) 2016, Fisher Yu'
 __email__ = 'i@yf.io'
 __license__ = 'MIT'
-
-
-@numba.jit(nopython=False)
-def interp_map(prob, zoom, width, height):
-    zoom_prob = np.zeros((prob.shape[0], height, width), dtype=np.float32)
-    for c in range(prob.shape[0]):
-        for h in range(height):
-            for w in range(width):
-                r0 = h // zoom
-                r1 = r0 + 1
-                c0 = w // zoom
-                c1 = c0 + 1
-                rt = float(h) / zoom - r0
-                ct = float(w) / zoom - c0
-                v0 = rt * prob[c, r1, c0] + (1 - rt) * prob[c, r0, c0]
-                v1 = rt * prob[c, r1, c1] + (1 - rt) * prob[c, r0, c1]
-                zoom_prob[c, h, w] = (1 - ct) * v0 + ct * v1
-    return zoom_prob
 
 
 class Dataset(object):
@@ -109,7 +93,7 @@ def predict(dataset_name, input_path, output_path):
         prediction.append(col_prediction)
     prob = np.concatenate(prediction, axis=1)
     if dataset.zoom > 1:
-        prob = interp_map(prob, dataset.zoom, image_size[1], image_size[0])
+        prob = util.interp_map(prob, dataset.zoom, image_size[1], image_size[0])
     prediction = np.argmax(prob.transpose([1, 2, 0]), axis=2)
     color_image = dataset.palette[prediction.ravel()].reshape(image_size)
     color_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
