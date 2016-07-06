@@ -18,6 +18,18 @@ __email__ = 'i@yf.io'
 __license__ = 'MIT'
 
 
+def read_array(filename):
+    with open(filename, 'rb') as fp:
+        type_code = np.fromstring(fp.read(4), dtype=np.int32)
+        shape_size = np.fromstring(fp.read(4), dtype=np.int32)
+        shape = np.fromstring(fp.read(4 * shape_size), dtype=np.int32)
+        if type_code == cv2.CV_32F:
+            dtype = np.float32
+        if type_code == cv2.CV_64F:
+            dtype = np.float64
+        return np.fromstring(fp.read(), dtype=dtype).reshape(shape)
+
+
 def write_array(filename, array):
     with open(filename, 'wb') as fp:
         if array.dtype == np.float32:
@@ -32,7 +44,7 @@ def write_array(filename, array):
         fp.write(array.tostring())
 
 
-def make_deploy(options):
+def make_frontend_vgg(options):
     deploy_net = caffe.NetSpec()
     deploy_net.data = network.make_input_data(options.input_size)
     last, final_name = network.build_frontend_vgg(
@@ -45,7 +57,40 @@ def make_deploy(options):
     return deploy_net, final_name
 
 
-def test(options):
+def make_context(options):
+    deploy_net = caffe.NetSpec()
+    deploy_net.data = network.make_input_data(
+        options.input_size, options.classes)
+    last, final_name = network.build_context(
+        deploy_net, deploy_net.data, options.classes, options.layers)
+    if options.up:
+        deploy_net.upsample = network.make_upsample(last, options.classes)
+        last = deploy_net.upsample
+    deploy_net.prob = network.make_prob(last)
+    deploy_net = deploy_net.to_proto()
+    return deploy_net, final_name
+
+
+def make_joint(options):
+    deploy_net = caffe.NetSpec()
+    deploy_net.data = network.make_input_data(options.input_size)
+    last = network.build_frontend_vgg(
+        deploy_net, deploy_net.data, options.classes)[0]
+    last, final_name = network.build_context(
+        deploy_net, last, options.classes, options.layers)
+    if options.up:
+        deploy_net.upsample = network.make_upsample(last, options.classes)
+        last = deploy_net.upsample
+    deploy_net.prob = network.make_prob(last)
+    deploy_net = deploy_net.to_proto()
+    return deploy_net, final_name
+
+
+def make_deploy(options):
+    return globals()['make_' + options.model](options)
+
+
+def test_image(options):
     options.feat_dir = join(options.feat_dir, options.feat_layer_name)
     if not exists(options.feat_dir):
         os.makedirs(options.feat_dir)
@@ -161,11 +206,107 @@ def test(options):
             fp.write('\n'.join(feat_list))
 
 
+def test_bin(options):
+    label_margin = 0
+    pad = 0
+    if options.up:
+        zoom = 1
+    else:
+        zoom = 8
+
+    if options.gpu >= 0:
+        caffe.set_mode_gpu()
+        caffe.set_device(options.gpu)
+        print('Using GPU ', options.gpu)
+    else:
+        caffe.set_mode_cpu()
+        print('Using CPU')
+
+    net = caffe.Net(options.deploy_net, options.weights, caffe.TEST)
+
+    image_paths = [line.strip() for line in open(options.image_list, 'r')]
+    bin_paths = [line.strip() for line in open(options.bin_list, 'r')]
+    names = [splitext(split(p)[1])[0] for p in bin_paths]
+
+    assert len(image_paths) == len(bin_paths)
+
+    input_dims = net.blobs['data'].shape
+    assert input_dims[0] == 1
+    batch_size, num_channels, input_height, input_width = input_dims
+    caffe_in = np.zeros(input_dims, dtype=np.float32)
+
+    bin_test_image = read_array(bin_paths[0])
+    bin_test_image_shape = bin_test_image.shape
+    assert bin_test_image_shape[1] < input_height and \
+        bin_test_image_shape[2] < input_width, \
+        'input_size should be greater than bin image size {} x {}'.format(
+            bin_test_image_shape[1], bin_test_image_shape[2])
+
+    result_list = []
+
+    for i in range(len(image_paths)):
+        print('Predicting', bin_paths[i])
+        image = cv2.imread(image_paths[i])
+        image_size = image.shape
+        if zoom != 1:
+            image_rows = image_size[0] // zoom + \
+                         (1 if image_size[0] % zoom != 0 else 0)
+            image_cols = image_size[1] // zoom + \
+                         (1 if image_size[1] % zoom != 0 else 0)
+        else:
+            image_rows = image_size[0]
+            image_cols = image_size[1]
+        image_bin = read_array(bin_paths[i])
+        image_bin = image_bin[:, :image_rows, :image_cols]
+
+        top = label_margin
+        bottom = input_height - top - image_rows
+        left = label_margin
+        right = input_width - left - image_cols
+
+        for j in range(num_channels):
+            if pad == 1:
+                caffe_in[0][j] = cv2.copyMakeBorder(
+                    image_bin[j], top, bottom, left, right,
+                    cv2.BORDER_REFLECT_101)
+            elif pad == 0:
+                caffe_in[0][j] = cv2.copyMakeBorder(
+                    image_bin[j], top, bottom, left, right,
+                    cv2.BORDER_CONSTANT)
+        out = net.forward_all(**{net.inputs[0]: caffe_in})
+        prob = out['prob'][0]
+        if zoom > 1:
+            prob = util.interp_map(prob, zoom, image_size[1], image_size[0])
+        else:
+            prob = prob[:, :image_size[0], :image_size[1]]
+        prediction = np.argmax(prob.transpose([1, 2, 0]), axis=2)
+        out_path = join(options.result_dir, names[i] + '.png')
+        print('Writing', out_path)
+        cv2.imwrite(out_path, prediction)
+        result_list.append(out_path)
+
+    print('================================')
+    print('All results are generated.')
+    print('================================')
+
+    result_list_path = join(options.result_dir, 'results.txt')
+    print('Writing', result_list_path)
+    with open(result_list_path, 'w') as fp:
+        fp.write('\n'.join(result_list))
+
+
+def test(options):
+    if options.model == 'context':
+        test_bin(options)
+    else:
+        test_image(options)
+
+
 def process_options(options):
     assert exists(options.image_list), options.image_list + ' does not exist'
     assert exists(options.weights), options.weights + ' does not exist'
-    assert options.model == 'frontend', \
-        'Only front end training is supported now'
+    assert options.model != 'context' or exists(options.bin_list), \
+        options.bin_list + ' does not exist'
 
     if options.model == 'frontend':
         options.model += '_vgg'
@@ -175,6 +316,12 @@ def process_options(options):
     options.deploy_net = join(work_dir, model + '_deploy.txt')
     options.result_dir = join(work_dir, 'results', options.sub_dir, model)
     options.feat_dir = join(work_dir, 'bin', options.sub_dir, model)
+
+    if options.input_size is None:
+        options.input_size = [80, 80] if options.model == 'context' \
+            else [900, 900]
+    elif len(options.input_size) == 1:
+        options.input_size.append(options.input_size[0])
 
     if not exists(work_dir):
         print('Creating working directory', work_dir)
@@ -201,7 +348,11 @@ def main():
                              'results will be saved in <work_dir>/results/val/ '
                              'folder. By default, the results are saved in '
                              '<work_dir>/results/ directly.')
-    parser.add_argument('--image_list', required=True)
+    parser.add_argument('--image_list', required=True,
+                        help='List of images to test on. This is required '
+                             'for context module to deal with variable image '
+                             'size.')
+    parser.add_argument('--bin_list', help='The input for context module')
     parser.add_argument('--weights', required=True)
     parser.add_argument('--bin', action='store_true',
                         help='Turn on to output the features of a '
@@ -214,7 +365,7 @@ def main():
     parser.add_argument('--mean', nargs='*', default=[102.93, 111.36, 116.52],
                         help='Mean pixel value (BGR) for the dataset.\n'
                              'Default is the mean pixel of PASCAL dataset.')
-    parser.add_argument('--input_size', type=int, default=900,
+    parser.add_argument('--input_size', nargs='*', type=int,
                         help='The input image size for deploy network.')
     parser.add_argument('--classes', type=int, required=True,
                         help='Number of categories in the data')
@@ -224,6 +375,9 @@ def main():
     parser.add_argument('--gpu', type=int, default=0,
                         help='GPU for testing. If it is less than 0, '
                              'CPU is used instead.')
+    parser.add_argument('--layers', type=int, default=8,
+                        help='Used for training context module.\n'
+                             'Number of layers in the context module.')
 
     options = process_options(parser.parse_args())
     deploy_net, feat_name = make_deploy(options)

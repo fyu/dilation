@@ -42,8 +42,9 @@ def make_bin_label_data(bin_list_path, label_list_path, batch_size,
     return data, label
 
 
-def make_input_data(dim):
-    return L.Input(input_param=dict(shape=dict(dim=[1, 3, dim, dim])))
+def make_input_data(input_size, channels=3):
+    return L.Input(input_param=dict(shape=dict(
+        dim=[1, channels, input_size[0], input_size[1]])))
 
 
 def make_softmax_loss(bottom, label):
