@@ -46,6 +46,10 @@ def make_deploy(options):
 
 
 def test(options):
+    options.feat_dir = join(options.feat_dir, options.feat_layer_name)
+    if not exists(options.feat_dir):
+        os.makedirs(options.feat_dir)
+
     label_margin = 186
 
     if options.up:
@@ -93,7 +97,6 @@ def test(options):
                       (1 if image_size[1] % output_width else 0)
         prediction = []
         feat = []
-        print('# Tiles:', num_tiles_w * num_tiles_h)
         for h in range(num_tiles_h):
             col_prediction = []
             col_feat = []

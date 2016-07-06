@@ -45,10 +45,13 @@ def make_solver(options):
     return solver
 
 
-def make_net(options, is_training):
+def make_frontend_vgg(options, is_training):
+    batch_size = options.train_batch if is_training else options.test_batch
+    image_path = options.train_image if is_training else options.test_image
+    label_path = options.train_label if is_training else options.test_label
     net = caffe.NetSpec()
     net.data, net.label = network.make_image_label_data(
-        options.train_image, options.train_label, options.train_batch,
+        image_path, label_path, batch_size,
         is_training, options.crop_size, options.mean)
     last = network.build_frontend_vgg(
         net, net.data, options.classes)[0]
@@ -58,8 +61,51 @@ def make_net(options, is_training):
     net.loss = network.make_softmax_loss(last, net.label)
     if not is_training:
         net.accuracy = network.make_accuracy(last, net.label)
-    net = net.to_proto()
-    return net
+    return net.to_proto()
+
+
+def make_context(options, is_training):
+    batch_size = options.train_batch if is_training else options.test_batch
+    image_path = options.train_image if is_training else options.test_image
+    label_path = options.train_label if is_training else options.test_label
+    net = caffe.NetSpec()
+    net.data, net.label = network.make_bin_label_data(
+        image_path, label_path, batch_size,
+        options.label_shape, options.label_stride)
+    last = network.build_context(
+        net, net.data, options.classes, options.layers)[0]
+    if options.up:
+        net.upsample = network.make_upsample(last, options.classes)
+        last = net.upsample
+    net.loss = network.make_softmax_loss(last, net.label)
+    if not is_training:
+        net.accuracy = network.make_accuracy(last, net.label)
+    return net.to_proto()
+
+
+def make_joint(options, is_training):
+    batch_size = options.train_batch if is_training else options.test_batch
+    image_path = options.train_image if is_training else options.test_image
+    label_path = options.train_label if is_training else options.test_label
+    net = caffe.NetSpec()
+    net.data, net.label = network.make_image_label_data(
+        image_path, label_path, batch_size,
+        is_training, options.crop_size, options.mean)
+    last = network.build_frontend_vgg(
+        net, net.data, options.classes)[0]
+    last = network.build_context(
+        net, last, options.classes, options.layers)[0]
+    if options.up:
+        net.upsample = network.make_upsample(last, options.classes)
+        last = net.upsample
+    net.loss = network.make_softmax_loss(last, net.label)
+    if not is_training:
+        net.accuracy = network.make_accuracy(last, net.label)
+    return net.to_proto()
+
+
+def make_net(options, is_training):
+    return globals()['make_' + options.model](options, is_training)
 
 
 def make_nets(options):
@@ -76,8 +122,14 @@ def process_options(options):
         "The crop size must be a multiple of 8 after removing the margin"
     assert len(options.mean) == 3
 
-    assert options.model == 'frontend', \
-        'Only front end training is supported now'
+    assert options.model == 'context' or options.weights is not None, \
+        'Pretrained weights are required for frontend and joint training.'
+
+    assert options.model != 'context' or \
+        (options.label_shape is not None and
+         len(options.label_shape) == 2), \
+        'Please specify the height and weight of label images ' \
+        'for computing the loss.'
 
     assert exists(options.train_image), options.train_image + 'does not exist'
     assert exists(options.train_label), options.train_label + 'does not exist'
@@ -102,6 +154,11 @@ def process_options(options):
     if not exists(snapshot_dir):
         os.makedirs(snapshot_dir)
     options.snapshot_prefix = join(snapshot_dir, model)
+
+    if options.up:
+        options.label_stride = 1
+    else:
+        options.label_stride = 8
 
     return options
 
@@ -128,9 +185,9 @@ def main():
                              'Default is the mean pixel of PASCAL dataset.')
     parser.add_argument('--work_dir', default='training/',
                         help='Working dir for training.\nAll the generated '
-                             'network and solver configurations will be written '
-                             'to this directory, in addition to training '
-                             'snapshots.')
+                             'network and solver configurations will be '
+                             'written to this directory, in addition to '
+                             'training snapshots.')
     parser.add_argument('--train_image', default='', required=True,
                         help='Path to the training image list')
     parser.add_argument('--train_label', default='', required=True,
@@ -153,6 +210,12 @@ def main():
     parser.add_argument('--up', action='store_true',
                         help='If true, upsampling the final feature map '
                              'before calculating the loss or accuracy')
+    parser.add_argument('--layers', type=int, default=8,
+                        help='Used for training context module.\n'
+                             'Number of layers in the context module.')
+    parser.add_argument('--label_shape', nargs='*', type=int,
+                        help='Used for training context module.\n' \
+                             'The dimensions of labels for the loss function.')
 
     options = process_options(parser.parse_args())
 

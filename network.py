@@ -30,6 +30,18 @@ def make_image_label_data(image_list_path, label_list_path, batch_size,
     return data, label
 
 
+def make_bin_label_data(bin_list_path, label_list_path, batch_size,
+                        label_shape, label_stride):
+    data, label = L.BinLabelData(
+        bin_label_data_param=dict(
+            bin_list_path=bin_list_path, label_list_path=label_list_path,
+            shuffle=True, batch_size=batch_size,
+            label_slice=dict(stride=[label_stride, label_stride],
+                             dim=label_shape)),
+        ntop=2)
+    return data, label
+
+
 def make_input_data(dim):
     return L.Input(input_param=dict(shape=dict(dim=[1, 3, dim, dim])))
 
@@ -115,7 +127,7 @@ def build_frontend_vgg(net, bottom, num_classes):
     return net.final, 'final'
 
 
-def build_context(net, bottom, num_classes, levels=8):
+def build_context(net, bottom, num_classes, layers=8):
     prev_layer = bottom
     multiplier = 1
     for i in range(1, 3):
@@ -128,12 +140,15 @@ def build_context(net, bottom, num_classes, levels=8):
                            dict(lr_mult=2, decay_mult=0)],
                     convolution_param=dict(
                         num_output=num_classes * multiplier, kernel_size=3,
-                        pad=1)))
+                        pad=1,
+                        weight_filler=dict(type='identity',
+                                           num_groups=num_classes, std=0.01),
+                        bias_filler=dict(type='constant', value=0))))
         setattr(net, relu_name,
                 L.ReLU(getattr(net, conv_name), in_place=True))
         prev_layer = getattr(net, relu_name)
 
-    for i in range(2, levels - 2):
+    for i in range(2, layers - 2):
         dilation = 2 ** (i - 1)
         multiplier = 1
         conv_name = 'ctx_conv{}_1'.format(i)
@@ -145,8 +160,11 @@ def build_context(net, bottom, num_classes, levels=8):
                            dict(lr_mult=2, decay_mult=0)],
                     convolution_param=dict(
                         num_output=num_classes * multiplier, kernel_size=3,
-                        dilation=dilation, pad=dilation)
-                ))
+                        dilation=dilation, pad=dilation,
+                        weight_filler=dict(type='identity',
+                                           num_groups=num_classes,
+                                           std=0.01 / multiplier),
+                        bias_filler=dict(type='constant', value=0))))
         setattr(net, relu_name,
                 L.ReLU(getattr(net, conv_name), in_place=True))
         prev_layer = getattr(net, relu_name)
@@ -155,12 +173,19 @@ def build_context(net, bottom, num_classes, levels=8):
         prev_layer,
         param=[dict(lr_mult=1, decay_mult=1), dict(lr_mult=2, decay_mult=0)],
         convolution_param=dict(
-                        num_output=num_classes * multiplier, kernel_size=3,
-                        pad=1))
+            num_output=num_classes * multiplier, kernel_size=3, pad=1,
+            weight_filler=dict(type='identity',
+                               num_groups=num_classes,
+                               std=0.01 / multiplier),
+            bias_filler=dict(type='constant', value=0)))
     net.ctx_fc1_relu = L.ReLU(net.ctx_fc1, in_place=True)
     net.ctx_final = L.Convolution(
         net.ctx_fc1_relu,
         param=[dict(lr_mult=1, decay_mult=1), dict(lr_mult=2, decay_mult=0)],
         convolution_param=dict(
-                        num_output=num_classes, kernel_size=1))
+            num_output=num_classes, kernel_size=1,
+            weight_filler=dict(type='identity',
+                               num_groups=num_classes,
+                               std=0.01 / multiplier),
+            bias_filler=dict(type='constant', value=0)))
     return net.ctx_final, 'ctx_final'
