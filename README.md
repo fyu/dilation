@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Properties of dilated convolution are discussed in our [ICLR 2016 conference paper](http://arxiv.org/abs/1511.07122). This repository contains the network definitions and the trained models. You can use this code together with vanilla Caffe to segment images using the pre-trained models. If you want to train the models yourself, use [this fork of Caffe](https://github.com/fyu/caffe-dilation).
+Properties of dilated convolution are discussed in our [ICLR 2016 conference paper](http://arxiv.org/abs/1511.07122). This repository contains the network definitions and the trained models. You can use this code together with vanilla Caffe to segment images using the pre-trained models. If you want to train the models yourself, please check out the [ducoment for training](https://github.com/fyu/dilation/blob/master/docs/training.md).
 
 ### Citing
 
@@ -63,7 +63,7 @@ Given the dataset name, the script will find the pre-trained model and network d
     
 ## Training
 
-If you want to train our network on a new dataset, please refer to the [document for training](docs/training.md).
+You are more than welcome to train our model on a new dataset. To do that, please refer to the [document for training](docs/training.md).
 
 ## Implementation of Dilated Convolution
 
