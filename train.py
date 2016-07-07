@@ -32,7 +32,7 @@ def make_solver(options):
     solver.stepsize = 100000
     solver.display = 5
     solver.max_iter = 400000
-    solver.momentum = 0.99
+    solver.momentum = options.momentum
     solver.weight_decay = 0.0005
     solver.regularization_type = 'L2'
     solver.snapshot = 2000
@@ -160,6 +160,17 @@ def process_options(options):
     else:
         options.label_stride = 8
 
+    if options.lr == 0:
+        if options.model == 'frontend_vgg':
+            options.lr = 0.0001
+        elif options.model == 'context':
+            options.lr = 0.001
+        elif options.model == 'joint':
+            options.lr = 0.00001
+
+    if options.momentum == 0:
+        options.momentum = 0.9
+
     return options
 
 
@@ -201,8 +212,10 @@ def main():
     parser.add_argument('--test_batch', type=int, default=2,
                         help='Testing batch size. If it is 0, no test phase.')
     parser.add_argument('--crop_size', type=int, default=500)
-    parser.add_argument('--lr', type=float, default=0.00001,
-                        help='Solver earning rate')
+    parser.add_argument('--lr', type=float, default=0,
+                        help='Solver SGD learning rate')
+    parser.add_argument('--momentum', type=float, default=0,
+                        help='Solver SGD momentum')
     parser.add_argument('--classes', type=int, required=True,
                         help='Number of categories in the data')
     parser.add_argument('--gpu', type=str, default='0',

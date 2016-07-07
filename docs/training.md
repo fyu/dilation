@@ -10,9 +10,9 @@ Besides the Python dependency listed in [README](https://github.com/fyu/dilation
 
 ## Front End
 
-Assume ${DILATION} is the directory of [fyu/dilation](https://github.com/fyu/dilation) and ${CAFFE_DILATION_BUILD} is the build directory for [fyu/caffe-dilation](https://github.com/fyu/caffe-dilation).
+Assume `${DILATION}` is the directory of [fyu/dilation](https://github.com/fyu/dilation) and `${CAFFE_DILATION_BUILD}` is the build directory for [fyu/caffe-dilation](https://github.com/fyu/caffe-dilation).
 
-The code used for training is ${DILATION}/train.py. It takes some parameters for the data layers and tries to fill in the other automatically.
+The code used for training is `${DILATION}/train.py`. It takes some parameters for the data layers and tries to fill in the other automatically.
 
 Before training the front end, please download the weights of VGG network trained on ImageNet
 
@@ -20,31 +20,9 @@ Before training the front end, please download the weights of VGG network traine
 sh ${DILATION}/pretrained/download_vgg_conv.sh
 ```
 
-The script document:
+train.py takes different options to make it flexible to train the model with different parameters. Four of the parameters are used to read the input data:
 
 ```
-usage: train.py [-h] [--caffe CAFFE] [--weights WEIGHTS]
-                [--mean [MEAN [MEAN ...]]] [--work_dir WORK_DIR] --train_image
-                TRAIN_IMAGE --train_label TRAIN_LABEL
-                [--test_image TEST_IMAGE] [--test_label TEST_LABEL]
-                [--train_batch TRAIN_BATCH] [--test_batch TEST_BATCH]
-                [--crop_size CROP_SIZE] [--lr LR]
-                [{frontend,context,joint}]
-
-positional arguments:
-  {frontend,context,joint}
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --caffe CAFFE         Path to the caffe binary compiled from
-                        https://github.com/fyu/caffe-dilation.
-  --weights WEIGHTS     Path to the weights to initialize the model.
-  --mean [MEAN [MEAN ...]]
-                        Mean pixel value (BGR) for the dataset. Default is the
-                        mean pixel of PASCAL dataset.
-  --work_dir WORK_DIR   Working dir for training. All the generated network
-                        and solver configurations will be written to this
-                        directory, in addition to training snapshots.
   --train_image TRAIN_IMAGE
                         Path to the training image list
   --train_label TRAIN_LABEL
@@ -53,16 +31,11 @@ optional arguments:
                         Path to the testing image list
   --test_label TEST_LABEL
                         Path to the testing label list
-  --train_batch TRAIN_BATCH
-                        Training batch size.
-  --test_batch TEST_BATCH
-                        Testing batch size. If it is 0, no test phase.
-  --crop_size CROP_SIZE
-  --lr LR               Solver earning rate
-  --classes CLASSES     Number of categories in the data
 ```
 
 Please note that training/testing image/label lists are text files, in which each line specify a file path to the input or label image for training. The image and label lists for training or testing should have the same number of lines. The labels and images are corresponded by line number. The testing data is for the test phase of Caffe. Normally, it refers to the validation set in a dataset.
+
+Sometimes, it is critical to set the right learning rate and momentum to get the best training results. `train.py` tries to set some reasonable values by default, but the optimal setting depends on the image and dataset set. Please refer to [our paper](https://arxiv.org/abs/1511.07122) for settings on different datasets. To change the other solver parameters, please check the function `make_solver` in `train.py`.
 
 Below is an example to train front end on PASCAL VOC dataset:
 
@@ -79,4 +52,57 @@ python ${DILATION}/train.py frontend \
 --weights ${DILATION}/pretrained/vgg_conv.caffemodel \
 --crop_size 500 \
 --classes 21
+```
+
+After the training procedure finishes,  `test.py` can generate the prediction results from a list of images based on the trained caffe model. As with `train.py`, it will save network definition for deploy in `work_dir`. If continuing to train context module, you can add `--bin` to the command line to extract the responses of the last feature layer, which will serve as input to the context module. After processing all the images, a list of generated features will be written to the `feat` folder in `work_dir`, which can serve as input for training context module.
+
+```bash
+python ${DILATION}/test.py frontend \
+--work_dir training \
+--image_list <image_list> \
+--weights <caffe_model_path> \
+--classes 21 \
+--bin
+```
+
+`test.py` can also be used to generating prediction results for context module and joint training.
+
+##Context Module
+
+Similar to front end, `train.py` can be used for training context module based on the ouput of `test.py`.  Among the parameters, `layers` specifies the number of layers in context module depending on the input image size. 8 is good for PASCAL VOC dataset. `label_shape` is the height and weight of the stored features for each image.
+
+Here is an example to train the context module with `train.py`
+
+```bash
+python ${DILATION}/train.py context \
+--train_image <path to training feature bin list> \
+--train_label <path to traiing label list> \
+--test_image <path to testing feature bin list> \
+--test_label <path to testing label list> \
+--train_batch 60 \
+--test_batch 10 \
+--caffe ${CAFFE_DILATION_BUILD}/tools/caffe \
+--classes 21 \
+--layers 8 \
+--label_shape 66 66
+```
+
+##Joint Training
+
+After training the context module, it can sometimes improve the results further to train the front end and context module jointly. If the dataset only has hundreds of images, it is possible to skip training context module and do joint training directly with identity initialization for context module.
+
+Example to train jointly
+
+```bash
+python ${DILATION}/train.py joint \
+--train_image <path to training image list> \
+--train_label <path to traiing label list> \
+--test_image <path to testing image list> \
+--test_label <path to testing label list> \
+--train_batch 14 \
+--test_batch 2 \
+--caffe ${CAFFE_DILATION_BUILD}/tools/caffe \
+--weights <trained frontend model>,<trained context model> \
+--classes 21 \
+--layers 8
 ```
