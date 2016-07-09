@@ -237,8 +237,8 @@ def test_bin(options):
 
     bin_test_image = read_array(bin_paths[0])
     bin_test_image_shape = bin_test_image.shape
-    assert bin_test_image_shape[1] < input_height and \
-        bin_test_image_shape[2] < input_width, \
+    assert bin_test_image_shape[1] <= input_height and \
+        bin_test_image_shape[2] <= input_width, \
         'input_size should be greater than bin image size {} x {}'.format(
             bin_test_image_shape[1], bin_test_image_shape[2])
 
