@@ -208,6 +208,7 @@ def test_image(options):
 
 def test_bin(options):
     label_margin = 0
+    input_zoom = 8
     pad = 0
     if options.up:
         zoom = 1
@@ -248,11 +249,11 @@ def test_bin(options):
         print('Predicting', bin_paths[i])
         image = cv2.imread(image_paths[i])
         image_size = image.shape
-        if zoom != 1:
-            image_rows = image_size[0] // zoom + \
-                         (1 if image_size[0] % zoom != 0 else 0)
-            image_cols = image_size[1] // zoom + \
-                         (1 if image_size[1] % zoom != 0 else 0)
+        if input_zoom != 1:
+            image_rows = image_size[0] // input_zoom + \
+                         (1 if image_size[0] % input_zoom != 0 else 0)
+            image_cols = image_size[1] // input_zoom + \
+                         (1 if image_size[1] % input_zoom != 0 else 0)
         else:
             image_rows = image_size[0]
             image_cols = image_size[1]
