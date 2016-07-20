@@ -214,8 +214,8 @@ def main():
     parser.add_argument('--crop_size', type=int, default=500)
     parser.add_argument('--lr', type=float, default=0,
                         help='Solver SGD learning rate')
-    parser.add_argument('--momentum', type=float, default=0,
-                        help='Solver SGD momentum')
+    parser.add_argument('--momentum', type=float, default=0.9,
+                        help='Gradient momentum')
     parser.add_argument('--classes', type=int, required=True,
                         help='Number of categories in the data')
     parser.add_argument('--gpu', type=str, default='0',
