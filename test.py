@@ -363,7 +363,7 @@ def main():
                         help='Extract the response maps from this layer. '
                              'It is usually the penultimate layer. '
                              'Usually, default is good.')
-    parser.add_argument('--mean', nargs='*', default=[102.93, 111.36, 116.52],
+    parser.add_argument('--mean', nargs='*', default=[102.93, 111.36, 116.52], type=float,
                         help='Mean pixel value (BGR) for the dataset.\n'
                              'Default is the mean pixel of PASCAL dataset.')
     parser.add_argument('--input_size', nargs='*', type=int,
