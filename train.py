@@ -37,7 +37,7 @@ def make_solver(options):
     solver.regularization_type = 'L2'
     solver.snapshot = 2000
     solver.solver_mode = solver.GPU
-    solver.iter_size = 1
+    solver.iter_size = options.iter_size
     solver.snapshot_format = solver.BINARYPROTO
     solver.type = 'SGD'
     solver.snapshot_prefix = options.snapshot_prefix
@@ -191,7 +191,8 @@ def main():
                              'https://github.com/fyu/caffe-dilation.')
     parser.add_argument('--weights', default=None,
                         help='Path to the weights to initialize the model.')
-    parser.add_argument('--mean', nargs='*', default=[102.93, 111.36, 116.52],
+    parser.add_argument('--mean', nargs='*', type=float,
+                        default=[102.93, 111.36, 116.52],
                         help='Mean pixel value (BGR) for the dataset.\n'
                              'Default is the mean pixel of PASCAL dataset.')
     parser.add_argument('--work_dir', default='training/',
@@ -229,6 +230,8 @@ def main():
     parser.add_argument('--label_shape', nargs='*', type=int,
                         help='Used for training context module.\n' \
                              'The dimensions of labels for the loss function.')
+    parser.add_argument('--iter_size', type=int, default=1,
+                        help='Number of passes/batches in each iteration.')
 
     options = process_options(parser.parse_args())
 
