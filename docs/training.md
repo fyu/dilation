@@ -52,6 +52,8 @@ python ${DILATION}/train.py frontend \
 --weights ${DILATION}/pretrained/vgg_conv.caffemodel \
 --crop_size 500 \
 --classes 21
+--lr 0.0001
+--momentum 0.9
 ```
 
 After the training procedure finishes,  `test.py` can generate the prediction results from a list of images based on the trained caffe model. As with `train.py`, it will save network definition for deploy in `work_dir`. If continuing to train context module, you can add `--bin` to the command line to extract the responses of the last feature layer, which will serve as input to the context module. After processing all the images, a list of generated features will be written to the `feat` folder in `work_dir`, which can serve as input for training context module.
@@ -85,6 +87,8 @@ python ${DILATION}/train.py context \
 --classes 21 \
 --layers 8 \
 --label_shape 66 66
+--lr 0.001
+--momentum 0.9
 ```
 
 ##Joint Training
@@ -105,4 +109,6 @@ python ${DILATION}/train.py joint \
 --weights <trained frontend model>,<trained context model> \
 --classes 21 \
 --layers 8
+--lr 0.00001
+--momentum 0.9
 ```

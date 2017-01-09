@@ -208,6 +208,7 @@ def test_image(options):
 
 def test_bin(options):
     label_margin = 0
+    input_zoom = 8
     pad = 0
     if options.up:
         zoom = 1
@@ -237,8 +238,8 @@ def test_bin(options):
 
     bin_test_image = read_array(bin_paths[0])
     bin_test_image_shape = bin_test_image.shape
-    assert bin_test_image_shape[1] < input_height and \
-        bin_test_image_shape[2] < input_width, \
+    assert bin_test_image_shape[1] <= input_height and \
+        bin_test_image_shape[2] <= input_width, \
         'input_size should be greater than bin image size {} x {}'.format(
             bin_test_image_shape[1], bin_test_image_shape[2])
 
@@ -248,11 +249,11 @@ def test_bin(options):
         print('Predicting', bin_paths[i])
         image = cv2.imread(image_paths[i])
         image_size = image.shape
-        if zoom != 1:
-            image_rows = image_size[0] // zoom + \
-                         (1 if image_size[0] % zoom != 0 else 0)
-            image_cols = image_size[1] // zoom + \
-                         (1 if image_size[1] % zoom != 0 else 0)
+        if input_zoom != 1:
+            image_rows = image_size[0] // input_zoom + \
+                         (1 if image_size[0] % input_zoom != 0 else 0)
+            image_cols = image_size[1] // input_zoom + \
+                         (1 if image_size[1] % input_zoom != 0 else 0)
         else:
             image_rows = image_size[0]
             image_cols = image_size[1]
@@ -362,7 +363,7 @@ def main():
                         help='Extract the response maps from this layer. '
                              'It is usually the penultimate layer. '
                              'Usually, default is good.')
-    parser.add_argument('--mean', nargs='*', default=[102.93, 111.36, 116.52],
+    parser.add_argument('--mean', nargs='*', default=[102.93, 111.36, 116.52], type=float,
                         help='Mean pixel value (BGR) for the dataset.\n'
                              'Default is the mean pixel of PASCAL dataset.')
     parser.add_argument('--input_size', nargs='*', type=int,
