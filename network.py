@@ -15,7 +15,7 @@ __license__ = 'MIT'
 def make_image_label_data(image_list_path, label_list_path, batch_size,
                           mirror, crop_size, mean_pixel,
                           label_stride=8, margin=186):
-    label_dim = (crop_size - margin * 2) // 8
+    label_dim = (crop_size - margin * 2) // label_stride
     data, label = L.ImageLabelData(
         transform_param=dict(mirror=mirror, mean_value=mean_pixel,
                              crop_size=crop_size),
