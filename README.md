@@ -4,6 +4,8 @@
 
 Properties of dilated convolution are discussed in our [ICLR 2016 conference paper](http://arxiv.org/abs/1511.07122). This repository contains the network definitions and the trained models. You can use this code together with vanilla Caffe to segment images using the pre-trained models. If you want to train the models yourself, please check out the [document for training](https://github.com/fyu/dilation/blob/master/docs/training.md).
 
+**If you are looking for dilation models with state-of-the-art performance and Python implementation, please check out [Dilated Residual Networks](https://github.com/fyu/drn).**
+
 ### Citing
 
 If you find the code or the models useful, please cite this paper:
