@@ -69,7 +69,7 @@ python ${DILATION}/test.py frontend \
 
 `test.py` can also be used to generating prediction results for context module and joint training.
 
-##Context Module
+## Context Module
 
 Similar to front end, `train.py` can be used for training context module based on the ouput of `test.py`.  Among the parameters, `layers` specifies the number of layers in context module depending on the input image size. 8 is good for PASCAL VOC dataset. `label_shape` is the height and weight of the stored features for each image.
 
@@ -91,7 +91,7 @@ python ${DILATION}/train.py context \
 --momentum 0.9
 ```
 
-##Joint Training
+## Joint Training
 
 After training the context module, it can sometimes improve the results further to train the front end and context module jointly. If the dataset only has hundreds of images, it is possible to skip training context module and do joint training directly with identity initialization for context module.
 
